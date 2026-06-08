@@ -1,0 +1,26 @@
+name: get-temperatures
+prefect-version: 3.7.4
+
+build: null
+push: null
+
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: /app/services/pipelines
+
+deployments:
+  - name: get-temperatures
+    description: "Extract temperatures from API, load to dw_weather staging schema"
+    entrypoint: src/pipelines/get_temperatures/flow.py:get_temperatures
+    tags: []
+    schedules:
+      - interval: 300
+        anchor_date: "2026-01-01T00:00:00Z"
+        timezone: "America/New_York"
+        active: true
+    work_pool:
+      name: default-pool
+      work_queue_name: default
+      job_variables: {}
+    parameters: {}
+    enforce_parameter_schema: false

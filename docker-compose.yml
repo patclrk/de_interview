@@ -1,0 +1,102 @@
+services:
+
+  # ── Weather API ───────────────────────────────────────────────────────────
+
+  postgres-weather:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_WEATHER_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_WEATHER_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_WEATHER_DB}
+    volumes:
+      - postgres_weather_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_WEATHER_USER} -d ${POSTGRES_WEATHER_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrations:
+    build:
+      context: .
+      dockerfile: packages/db/Dockerfile
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres-weather:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Prefect ───────────────────────────────────────────────────────────────
+
+  postgres-prefect:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_PREFECT_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PREFECT_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_PREFECT_DB}
+    volumes:
+      - postgres_prefect_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_PREFECT_USER} -d ${POSTGRES_PREFECT_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  prefect-server:
+    image: prefecthq/prefect:3-python3.14
+    command: prefect server start --host 0.0.0.0
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${POSTGRES_PREFECT_USER}:${POSTGRES_PREFECT_PASSWORD}@postgres-prefect:5432/${POSTGRES_PREFECT_DB}
+    ports:
+      - "4200:4200"
+    depends_on:
+      postgres-prefect:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health', timeout=5)"
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  prefect-worker:
+    build:
+      context: .
+      dockerfile: services/pipelines/Dockerfile
+    environment:
+      PREFECT_API_URL: ${PREFECT_API_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      API_URL: ${API_URL}
+    depends_on:
+      prefect-server:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_weather_data:
+  postgres_prefect_data:

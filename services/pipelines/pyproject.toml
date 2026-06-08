@@ -1,0 +1,22 @@
+[project]
+name = "pipelines"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "prefect==3.7.4",
+    "httpx==0.28.1",
+    "sqlalchemy==2.0.50",
+    "psycopg2-binary==2.9.12",
+    "polars==1.41.2",
+    "db",
+]
+
+[tool.uv.sources]
+db = { workspace = true }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"

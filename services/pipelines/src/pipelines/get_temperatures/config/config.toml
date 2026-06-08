@@ -1,0 +1,5 @@
+[api]
+url_env = "API_URL"
+
+[database]
+url_env = "DATABASE_URL"
