@@ -1,7 +1,7 @@
 # Data Engineering Interview
-This repository was created as a brief take home coding assessment. It uses some of the same technologies we use at work and consists of several components:
+This repository was created as a brief take home coding assessment. It features some of the same technologies we use every day at work, and consists of several components:
 - REST API that returns sample "weather" information
-- [Prefect](https://docs.prefect.io/v3/get-started) Server and Worker (and associated application database) that extracts data from the REST API
+- [Prefect](https://docs.prefect.io/v3/get-started) Server and Worker (and its associated application database) that extracts data from the REST API
 - Postgres Database that serves as a data warehouse with migrations managed via [alembic](https://alembic.sqlalchemy.org/en/latest/)
 
 The project is intended to be run on your local machine only.
@@ -24,17 +24,20 @@ docker compose up
 - Prefect Server URL: http://localhost:4200
 
 ## Your Task
-Please create a Prefect Flow that extracts data from the `/precipitation` endpoint and loads it into a new table in the Postgres `weather` database. Unfortunately, getting precipitation data is not as reliable as temperature data: a random chance of receiving an HTTP 500 response has been added to this endpoint to simulate faulty network connectivity. You'll want to think of ways to make this Flow a bit more reliable.
+Please create a Prefect Flow that extracts data from the `/precipitation` endpoint and loads it into a new table in the Postgres `weather` database. Similar to the `get_temperatures` Flow, this Flow should run every 5 minutes. 
+
+Unfortunately, getting "precipitation" data is not as reliable as getting "temperature" data: a random chance of receiving an HTTP 500 response has been added to this endpoint to simulate faulty network connectivity. You'll want to think of ways to make this Flow a bit more reliable (Hint: don't go overboard here).
 
 When you complete the task please open a pull request in GitHub. During your interview we will walk through your code together.
 
 #### Notes:
 - Please do not modify any code in the `/services/api/` directory.
-- AI use is encouraged.
 - We do not anticipate this task will take more than 2 hours.
 - Please be thorough but avoid complexity when developing your solution.
 - We care less about the code itself and more about the design decisions you, the human, make.
-- If you can familiarize yourself with new code quickly and produce simple and effective solutions that meet project requirements, we think you'll do well on our team. That's what we're really looking for with this assessment.
+- AI use is encouraged!
+- Exclamation points are also encouraged!
+- If you can familiarize yourself with new projects and produce simple and effective solutions relatively quickly, we think you'll do really well on our team.
 
 ## Repository Structure
 
