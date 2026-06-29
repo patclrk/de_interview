@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 import polars as pl
-from db.models import TemperatureReading
+from db.models import PrecipitationReading
 from prefect import flow, get_run_logger, task
 from sqlalchemy import create_engine, insert
 from sqlalchemy.orm import Session
@@ -25,50 +25,48 @@ def _require_env(var: str) -> str:
 API_URL = _require_env(_config["api"]["url_env"])
 DATABASE_URL = _require_env(_config["database"]["url_env"])
 
-
-@task
-def extract() -> dict[str, float]:
+@task(retries=3, retry_delay_seconds=5)
+def extract_precipitation() -> dict[str, float]:
     logger = get_run_logger()
-    with httpx.Client() as client:
-        response = client.post(f"{API_URL}/temperature", json={})
+
+    with httpx.Client(timeout=10.0) as client:
+        response = client.post(f"{API_URL}/precipitation", json={})
         response.raise_for_status()
-    readings: dict[str, float] = response.json()["readings"]
-    logger.info(f"Fetched {len(readings)} temperature readings: {readings}")
+
+    readings = response.json()["readings"]
+    logger.info(f"Fetched precipitation readings: {readings}")
     return readings
 
-
 @task
-def transform(readings: dict[str, float]) -> pl.DataFrame:
-    logger = get_run_logger()
+def transform_precipitation(readings: dict[str, float]) -> pl.DataFrame:
     df = pl.DataFrame(
         {
             "city": list(readings.keys()),
-            "temperature_f": list(readings.values()),
+            "precipitation": list(readings.values()),
         }
     ).with_columns(pl.lit(datetime.now(timezone.utc)).alias("recorded_at"))
-    logger.info(f"Transformed {len(df)} readings into DataFrame")
+
     return df
 
-
 @task
-def load(df: pl.DataFrame, flow_run_id: str) -> int:
-    logger = get_run_logger()
+def load_precipitation(df: pl.DataFrame, flow_run_id: str) -> int:
     engine = create_engine(DATABASE_URL)
-    rows = df.with_columns(pl.lit(flow_run_id).alias("flow_run_id")).to_dicts()
+
+    rows = df.with_columns(
+        pl.lit(flow_run_id).alias("flow_run_id")
+    ).to_dicts()
+
     with Session(engine) as session:
-        session.execute(insert(TemperatureReading), rows)
+        session.execute(insert(PrecipitationReading), rows)
         session.commit()
+
     engine.dispose()
-    logger.info(f"Wrote {len(rows)} records to dw_weather.temperature_readings")
     return len(rows)
 
-
 @flow(log_prints=True)
-def get_temperatures() -> None:
-    logger = get_run_logger()
+def get_precipitation() -> None:
     from prefect.runtime import flow_run
 
-    readings = extract()
-    df = transform(readings)
-    load(df, str(flow_run.id))
-    logger.info("Flow complete.")
+    readings = extract_precipitation()
+    df = transform_precipitation(readings)
+    load_precipitation(df, str(flow_run.id))
