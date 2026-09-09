@@ -69,6 +69,7 @@ de_interview/
         ├── prefect.yaml      # Deployment definitions
         ├── entrypoint.sh     # Prefect Worker startup script
         └── src/pipelines/
+            ├── common.py           # Shared config + extract/transform/load tasks
             ├── config/
             │   └── config.toml     # Shared API and database URL env var names
             ├── get_temperatures/   # example ETL
