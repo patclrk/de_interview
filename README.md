@@ -28,7 +28,11 @@ Please create a Prefect Flow that extracts data from the `/precipitation` endpoi
 
 Unfortunately, getting "precipitation" data is not as reliable as getting "temperature" data: a random chance of receiving an HTTP 500 response has been added to this endpoint to simulate faulty network connectivity. You'll want to think of ways to make this Flow a bit more reliable (Hint: don't go overboard here).
 
-When you complete the task please open a pull request in GitHub. During your interview we will walk through your code together.
+To create a pull request:
+- Fork this repository. 
+- When you are ready to submit your code, open a PR from your fork back to this repository. 
+
+During your interview we will walk through your code together.
 
 #### Notes:
 - Please do not modify any code in the `/services/api/` directory.
