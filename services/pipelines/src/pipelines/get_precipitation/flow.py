@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 import polars as pl
-from db.models import TemperatureReading
+from db.models import PrecipitationReading
 from prefect import flow, get_run_logger, task
 from sqlalchemy import create_engine, insert
 from sqlalchemy.orm import Session
@@ -26,14 +26,16 @@ API_URL = _require_env(_config["api"]["url_env"])
 DATABASE_URL = _require_env(_config["database"]["url_env"])
 
 
+# ~5% of calls return HTTP 500. Transient and stateless, so retries are the fix!
+# Retrying only extract means a successful load never re-runs — no duplicate rows.
 @task(retries=3, retry_delay_seconds=[5, 15, 30])
 def extract() -> dict[str, float]:
     logger = get_run_logger()
-    with httpx.Client(timeout=10.0) as client:
-        response = client.post(f"{API_URL}/temperature", json={})
-        response.raise_for_status()
+    with httpx.Client(timeout=10.0) as client:  # timeout guards a hung connection...
+        response = client.post(f"{API_URL}/precipitation", json={})
+        response.raise_for_status()  # turns the 500 into a retryable exception!
     readings: dict[str, float] = response.json()["readings"]
-    logger.info(f"Fetched {len(readings)} temperature readings: {readings}")
+    logger.info(f"Fetched {len(readings)} precipitation readings: {readings}")
     return readings
 
 
@@ -43,7 +45,7 @@ def transform(readings: dict[str, float]) -> pl.DataFrame:
     df = pl.DataFrame(
         {
             "city": list(readings.keys()),
-            "temperature_f": list(readings.values()),
+            "precipitation": list(readings.values()),
         }
     ).with_columns(pl.lit(datetime.now(timezone.utc)).alias("recorded_at"))
     logger.info(f"Transformed {len(df)} readings into DataFrame")
@@ -56,19 +58,19 @@ def load(df: pl.DataFrame, flow_run_id: str) -> int:
     engine = create_engine(DATABASE_URL)
     rows = df.with_columns(pl.lit(flow_run_id).alias("flow_run_id")).to_dicts()
     with Session(engine) as session:
-        session.execute(insert(TemperatureReading), rows)
+        session.execute(insert(PrecipitationReading), rows)
         session.commit()
     engine.dispose()
-    logger.info(f"Wrote {len(rows)} records to dw_weather.temperature_readings")
+    logger.info(f"Wrote {len(rows)} records to dw_weather.precipitation_readings")
     return len(rows)
 
 
 @flow(log_prints=True)
-def get_temperatures() -> None:
+def get_precipitation() -> None:
     logger = get_run_logger()
     from prefect.runtime import flow_run
 
     readings = extract()
     df = transform(readings)
-    load(df, str(flow_run.id))
+    load(df, str(flow_run.id))  # stamps every row with its run, for lineage!
     logger.info("Flow complete.")
