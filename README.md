@@ -64,7 +64,8 @@ de_interview/
     │   ├── src/api/
     │   │   ├── main.py
     │   │   └── routers/
-    │   │       └── temperature.py
+    │   │       ├── temperature.py
+    │   │       └── precipitation.py
     │   └── tests/
     │       └── test_api.py
     │
@@ -72,9 +73,12 @@ de_interview/
         ├── prefect.yaml      # Deployment definitions
         ├── entrypoint.sh     # Prefect Worker startup script
         └── src/pipelines/
-            └── get_temperatures/   # example ETL
-                ├── flow.py
-                └── config/
-                    └── config.toml # Default API and database URLs
+            ├── common.py           # Shared config + extract/transform/load tasks
+            ├── config/
+            │   └── config.toml     # Shared API and database URL env var names
+            ├── get_temperatures/   # example ETL
+            │   └── flow.py
+            └── get_precipitation/  # precipitation ETL
+                └── flow.py
 ```
 

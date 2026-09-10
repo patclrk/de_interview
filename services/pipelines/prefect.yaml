@@ -24,3 +24,21 @@ deployments:
       job_variables: {}
     parameters: {}
     enforce_parameter_schema: false
+
+  - name: get-precipitation
+    description: "Extract precipitation from API, load to dw_weather staging schema"
+    entrypoint: src/pipelines/get_precipitation/flow.py:get_precipitation
+    tags: []
+    schedules:
+      # Offset by half the interval so this flow interleaves with get-temperatures
+      # instead of firing in the same millisecond.
+      - interval: 300
+        anchor_date: "2026-01-01T00:02:30Z"
+        timezone: "America/New_York"
+        active: true
+    work_pool:
+      name: default-pool
+      work_queue_name: default
+      job_variables: {}
+    parameters: {}
+    enforce_parameter_schema: false
